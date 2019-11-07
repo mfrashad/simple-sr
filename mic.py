@@ -1,88 +1,112 @@
-#!/usr/bin/env python3
+import time
 
-# NOTE: this example requires PyAudio because it uses the Microphone class
+import Adafruit_GPIO.SPI as SPI
+import Adafruit_SSD1306
 
+from PIL import Image
+from PIL import ImageDraw
+from PIL import ImageFont
+
+import subprocess
 import speech_recognition as sr
 
-# obtain audio from the microphone
 r = sr.Recognizer()
-while 1:
+
+# Raspberry Pi pin configuration:
+RST = None     # on the PiOLED this pin isnt used
+# Note the following are only used with SPI:
+DC = 23
+SPI_PORT = 0
+SPI_DEVICE = 0
+
+# Beaglebone Black pin configuration:
+# RST = 'P9_12'
+# Note the following are only used with SPI:
+# DC = 'P9_15'
+# SPI_PORT = 1
+# SPI_DEVICE = 0
+
+# 128x32 display with hardware I2C:
+# disp = Adafruit_SSD1306.SSD1306_128_32(rst=RST)
+
+# 128x64 display with hardware I2C:
+disp = Adafruit_SSD1306.SSD1306_128_64(rst=RST)
+
+# Note you can change the I2C address by passing an i2c_address parameter like:
+# disp = Adafruit_SSD1306.SSD1306_128_64(rst=RST, i2c_address=0x3C)
+
+# Initialize library.
+disp.begin()
+
+# Clear display.
+disp.clear()
+disp.display()
+
+# Create blank image for drawing.
+# Make sure to create image with mode '1' for 1-bit color.
+width = disp.width
+height = disp.height
+image = Image.new('1', (width, height))
+
+# Get drawing object to draw on image.
+draw = ImageDraw.Draw(image)
+
+# Draw a black filled box to clear the image.
+draw.rectangle((0,0,width,height), outline=0, fill=0)
+
+# Draw some shapes.
+# First define some constants to allow easy resizing of shapes.
+padding = -2
+top = padding
+bottom = height-padding
+# Move left to right keeping track of the current x position for drawing shapes.
+x = 0
+
+
+# Load default font.
+font = ImageFont.load_default()
+
+# Alternatively load a TTF font.  Make sure the .ttf font file is in the same directory as the python script!
+# Some other nice fonts to try: http://www.dafont.com/bitmap.php
+# font = ImageFont.truetype('Minecraftia.ttf', 16)
+
+def clear(draw):
+    draw.rectangle((0,0,width,height), outline=0, fill=0)
+
+
+def print_oled(draw, disp, text, y=10):
+    draw.text((x, top+y), str(text), font=font, fill=255)
+    disp.image(image)
+    disp.display()
+    print(text)
+
+last_text = ""
+
+while True:
+
     with sr.Microphone() as source:
         r.adjust_for_ambient_noise(source)
-        print("Say something!")
-        audio = r.listen(source, timeout=3)
-
-    # recognize speech using Sphinx
-    # try:
-    #     print("Sphinx thinks you said " + r.recognize_sphinx(audio))
-    # except sr.UnknownValueError:
-    #     print("Sphinx could not understand audio")
-    # except sr.RequestError as e:
-    #     print("Sphinx error; {0}".format(e))
-
-    # recognize speech using Google Speech Recognition
+        clear(draw)
+        print_oled(draw, disp, "Say something!")
+        print_oled(draw, disp, last_text, y=24)
+        audio = r.listen(source, timeout=5)
     try:
         # for testing purposes, we're just using the default API key
         # to use another API key, use `r.recognize_google(audio, key="GOOGLE_SPEECH_RECOGNITION_API_KEY")`
         # instead of `r.recognize_google(audio)`
-        print("TEXT: " + r.recognize_google(audio))
+        clear(draw)
+        print_oled(draw, disp, 'processing')
+        last_text = r.recognize_google(audio)
+        print_oled(draw, disp, last_text, y=24)
     except sr.UnknownValueError:
-        print("Google Speech Recognition could not understand audio")
+        print_oled(draw, disp, "Google Speech Recognition could not understand audio", y=20)
     except sr.RequestError as e:
-        print("Could not request results from Google Speech Recognition service; {0}".format(e))
+        print_oled(draw, disp, "Could not request results from Google Speech Recognition service; {0}".format(e), y=20)
 
-# recognize speech using Google Cloud Speech
-# GOOGLE_CLOUD_SPEECH_CREDENTIALS = r"""INSERT THE CONTENTS OF THE GOOGLE CLOUD SPEECH JSON CREDENTIALS FILE HERE"""
-# try:
-#     print("Google Cloud Speech thinks you said " + r.recognize_google_cloud(audio, credentials_json=GOOGLE_CLOUD_SPEECH_CREDENTIALS))
-# except sr.UnknownValueError:
-#     print("Google Cloud Speech could not understand audio")
-# except sr.RequestError as e:
-#     print("Could not request results from Google Cloud Speech service; {0}".format(e))
+    # draw.text((x, top),       "IP: " + str(IP),  font=font, fill=255)
 
-# # recognize speech using Wit.ai
-# WIT_AI_KEY = "INSERT WIT.AI API KEY HERE"  # Wit.ai keys are 32-character uppercase alphanumeric strings
-# try:
-#     print("Wit.ai thinks you said " + r.recognize_wit(audio, key=WIT_AI_KEY))
-# except sr.UnknownValueError:
-#     print("Wit.ai could not understand audio")
-# except sr.RequestError as e:
-#     print("Could not request results from Wit.ai service; {0}".format(e))
+    # Display image.
+    disp.image(image)
+    disp.display()
+    time.sleep(.1)
 
-# # recognize speech using Microsoft Bing Voice Recognition
-# BING_KEY = "INSERT BING API KEY HERE"  # Microsoft Bing Voice Recognition API keys 32-character lowercase hexadecimal strings
-# try:
-#     print("Microsoft Bing Voice Recognition thinks you said " + r.recognize_bing(audio, key=BING_KEY))
-# except sr.UnknownValueError:
-#     print("Microsoft Bing Voice Recognition could not understand audio")
-# except sr.RequestError as e:
-#     print("Could not request results from Microsoft Bing Voice Recognition service; {0}".format(e))
-
-# # recognize speech using Microsoft Azure Speech
-# AZURE_SPEECH_KEY = "INSERT AZURE SPEECH API KEY HERE"  # Microsoft Speech API keys 32-character lowercase hexadecimal strings
-# try:
-#     print("Microsoft Azure Speech thinks you said " + r.recognize_azure(audio, key=AZURE_SPEECH_KEY))
-# except sr.UnknownValueError:
-#     print("Microsoft Azure Speech could not understand audio")
-# except sr.RequestError as e:
-#     print("Could not request results from Microsoft Azure Speech service; {0}".format(e))
-
-# # recognize speech using Houndify
-# HOUNDIFY_CLIENT_ID = "INSERT HOUNDIFY CLIENT ID HERE"  # Houndify client IDs are Base64-encoded strings
-# HOUNDIFY_CLIENT_KEY = "INSERT HOUNDIFY CLIENT KEY HERE"  # Houndify client keys are Base64-encoded strings
-# try:
-#     print("Houndify thinks you said " + r.recognize_houndify(audio, client_id=HOUNDIFY_CLIENT_ID, client_key=HOUNDIFY_CLIENT_KEY))
-# except sr.UnknownValueError:
-#     print("Houndify could not understand audio")
-# except sr.RequestError as e:
-#     print("Could not request results from Houndify service; {0}".format(e))
-
-# # recognize speech using IBM Speech to Text
-# IBM_USERNAME = "INSERT IBM SPEECH TO TEXT USERNAME HERE"  # IBM Speech to Text usernames are strings of the form XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX
-# IBM_PASSWORD = "INSERT IBM SPEECH TO TEXT PASSWORD HERE"  # IBM Speech to Text passwords are mixed-case alphanumeric strings
-# try:
-#     print("IBM Speech to Text thinks you said " + r.recognize_ibm(audio, username=IBM_USERNAME, password=IBM_PASSWORD))
-# except sr.UnknownValueError:
-#     print("IBM Speech to Text could not understand audio")
-# except sr.RequestError as e:
-#     print("Could not request results from IBM Speech to Text service; {0}".format(e))
