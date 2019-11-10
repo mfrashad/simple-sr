@@ -85,7 +85,7 @@ last_text = ""
 while True:
 
     with sr.Microphone() as source:
-        r.adjust_for_ambient_noise(source)
+        r.adjust_for_ambient_noise(source, duration=0.5)
         clear(draw)
         print_oled(draw, disp, "Say something!")
         print_oled(draw, disp, last_text, y=24)
