@@ -1,5 +1,7 @@
 import time
 
+from datetime import datetime
+
 import Adafruit_GPIO.SPI as SPI
 import Adafruit_SSD1306
 
@@ -7,8 +9,24 @@ from PIL import Image
 from PIL import ImageDraw
 from PIL import ImageFont
 
+import firebase_admin
+from firebase_admin import credentials
+from firebase_admin import firestore\
+
 import subprocess
 import speech_recognition as sr
+
+## Firebase Setup
+
+CRED_PATH = '~/serviceAccount.json'
+
+# Use a service account
+cred = credentials.Certificate(CRED_PATH)
+firebase_admin.initialize_app(cred)
+
+db = firestore.client()
+
+## Speech Recognition Setup
 
 r = sr.Recognizer()
 
@@ -80,6 +98,16 @@ def print_oled(draw, disp, text, y=10):
     disp.display()
     print(text)
 
+def save_message(db, message, lang='en-US', date=datetime.now(), record=None):
+    data = {
+        u'text': message,
+        u'date': date,
+        u'language': lang,
+        u'record': record
+    }
+    db.collection(u'transcriptions').add(data)
+}
+
 last_text = ""
 
 while True:
@@ -98,6 +126,7 @@ while True:
         print_oled(draw, disp, 'processing')
         last_text = r.recognize_google(audio)
         print_oled(draw, disp, last_text, y=24)
+        save_message(db, last_text)
     except sr.UnknownValueError:
         print_oled(draw, disp, "Google Speech Recognition could not understand audio", y=20)
     except sr.RequestError as e:
