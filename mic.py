@@ -74,6 +74,7 @@ bottom = height-padding
 x = 0
 
 language = 'en-US'
+last_text = ""
 
 
 # Load default font.
