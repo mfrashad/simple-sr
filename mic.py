@@ -11,7 +11,7 @@ from PIL import ImageFont
 
 import firebase_admin
 from firebase_admin import credentials
-from firebase_admin import firestore\
+from firebase_admin import firestore
 
 import subprocess
 import speech_recognition as sr
@@ -36,13 +36,6 @@ RST = None     # on the PiOLED this pin isnt used
 DC = 23
 SPI_PORT = 0
 SPI_DEVICE = 0
-
-# Beaglebone Black pin configuration:
-# RST = 'P9_12'
-# Note the following are only used with SPI:
-# DC = 'P9_15'
-# SPI_PORT = 1
-# SPI_DEVICE = 0
 
 # 128x32 display with hardware I2C:
 # disp = Adafruit_SSD1306.SSD1306_128_32(rst=RST)
@@ -80,6 +73,9 @@ bottom = height-padding
 # Move left to right keeping track of the current x position for drawing shapes.
 x = 0
 
+language = 'en-US'
+doc_watch = doc_ref.on_snapshot(on_snapshot)
+
 
 # Load default font.
 font = ImageFont.load_default()
@@ -108,7 +104,15 @@ def save_message(db, message, lang='en-US', date=datetime.now(), record=None):
     db.collection(u'transcriptions').add(data)
 }
 
-last_text = ""
+def on_change_language(doc_snapshot, changes, read_time):
+    for doc in doc_snapshot:
+        data = doc.to_dict()
+        print(u'Language: {}'.format(data['language']))
+        language = data['language']
+
+
+lang_ref = db.collection(u'settings').document(u'language')
+lang_watch = doc_ref.on_snapshot(on_change_language)
 
 while True:
 
@@ -124,7 +128,7 @@ while True:
         # instead of `r.recognize_google(audio)`
         clear(draw)
         print_oled(draw, disp, 'processing')
-        last_text = r.recognize_google(audio)
+        last_text = r.recognize_google(audio, language=language)
         print_oled(draw, disp, last_text, y=24)
         save_message(db, last_text)
     except sr.UnknownValueError:
