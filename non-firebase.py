@@ -1,7 +1,5 @@
 import time
 
-from datetime import datetime
-
 import Adafruit_GPIO.SPI as SPI
 import Adafruit_SSD1306
 
@@ -9,24 +7,10 @@ from PIL import Image
 from PIL import ImageDraw
 from PIL import ImageFont
 
-import firebase_admin
-from firebase_admin import credentials
-from firebase_admin import firestore
+import textwrap
 
 import subprocess
 import speech_recognition as sr
-
-## Firebase Setup
-
-CRED_PATH = '/home/pi/serviceAccount.json'
-
-# Use a service account
-cred = credentials.Certificate(CRED_PATH)
-firebase_admin.initialize_app(cred)
-
-db = firestore.client()
-
-## Speech Recognition Setup
 
 r = sr.Recognizer()
 
@@ -36,6 +20,13 @@ RST = None     # on the PiOLED this pin isnt used
 DC = 23
 SPI_PORT = 0
 SPI_DEVICE = 0
+
+# Beaglebone Black pin configuration:
+# RST = 'P9_12'
+# Note the following are only used with SPI:
+# DC = 'P9_15'
+# SPI_PORT = 1
+# SPI_DEVICE = 0
 
 # 128x32 display with hardware I2C:
 # disp = Adafruit_SSD1306.SSD1306_128_32(rst=RST)
@@ -73,8 +64,7 @@ bottom = height-padding
 # Move left to right keeping track of the current x position for drawing shapes.
 x = 0
 
-language = 'en-US'
-doc_watch = doc_ref.on_snapshot(on_snapshot)
+wrapper = textwrap.TextWrapper(width=20)
 
 
 # Load default font.
@@ -89,29 +79,14 @@ def clear(draw):
 
 
 def print_oled(draw, disp, text, y=10):
-    draw.text((x, top+y), str(text), font=font, fill=255)
+    word_list = wrapper.wrap(text=text)
+    for i in range(len(word_list)):
+        draw.text((x, top+y+(i*8)), str(word_list[i]), font=font, fill=255)
     disp.image(image)
     disp.display()
     print(text)
 
-def save_message(db, message, lang='en-US', date=datetime.now(), record=None):
-    data = {
-        u'text': message,
-        u'date': date,
-        u'language': lang,
-        u'record': record
-    }
-    db.collection(u'transcriptions').add(data)
-
-def on_change_language(doc_snapshot, changes, read_time):
-    for doc in doc_snapshot:
-        data = doc.to_dict()
-        print(u'Language: {}'.format(data['language']))
-        language = data['language']
-
-
-lang_ref = db.collection(u'settings').document(u'language')
-lang_watch = doc_ref.on_snapshot(on_change_language)
+last_text = ""
 
 while True:
 
@@ -127,9 +102,8 @@ while True:
         # instead of `r.recognize_google(audio)`
         clear(draw)
         print_oled(draw, disp, 'processing')
-        last_text = r.recognize_google(audio, language=language)
+        last_text = r.recognize_google(audio, language='ms-MY')
         print_oled(draw, disp, last_text, y=24)
-        save_message(db, last_text)
     except sr.UnknownValueError:
         print_oled(draw, disp, "Google Speech Recognition could not understand audio", y=20)
     except sr.RequestError as e:
