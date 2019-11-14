@@ -94,7 +94,9 @@ def print_oled(draw, disp, text, y=10):
     disp.display()
     print(text)
 
-def save_message(db, message, lang='en-US', date=datetime.now(), record=None):
+def save_message(db, message, lang='en-US', date=None, record=None):
+    if date is None:
+        date = datetime.now()
     data = {
         u'text': message,
         u'date': date,
@@ -105,9 +107,10 @@ def save_message(db, message, lang='en-US', date=datetime.now(), record=None):
 
 def on_change_language(doc_snapshot, changes, read_time):
     for doc in doc_snapshot:
-        data = doc.to_dict()
-        print(u'Language: {}'.format(data['language']))
-        language = data['language']
+        global language
+        lang_dict = doc.to_dict()
+        language = lang_dict['value']
+        print(u'Language: {}'.format(lang_dict['value']))
 
 
 lang_ref = db.collection(u'settings').document(u'language')
