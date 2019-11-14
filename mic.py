@@ -74,7 +74,6 @@ bottom = height-padding
 x = 0
 
 language = 'en-US'
-doc_watch = doc_ref.on_snapshot(on_snapshot)
 
 
 # Load default font.
@@ -111,7 +110,7 @@ def on_change_language(doc_snapshot, changes, read_time):
 
 
 lang_ref = db.collection(u'settings').document(u'language')
-lang_watch = doc_ref.on_snapshot(on_change_language)
+lang_watch = lang_ref.on_snapshot(on_change_language)
 
 while True:
 
