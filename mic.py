@@ -11,14 +11,14 @@ from PIL import ImageFont
 
 import firebase_admin
 from firebase_admin import credentials
-from firebase_admin import firestore\
+from firebase_admin import firestore
 
 import subprocess
 import speech_recognition as sr
 
 ## Firebase Setup
 
-CRED_PATH = '~/serviceAccount.json'
+CRED_PATH = '/home/pi/serviceAccount.json'
 
 # Use a service account
 cred = credentials.Certificate(CRED_PATH)
@@ -106,7 +106,6 @@ def save_message(db, message, lang='en-US', date=datetime.now(), record=None):
         u'record': record
     }
     db.collection(u'transcriptions').add(data)
-}
 
 last_text = ""
 

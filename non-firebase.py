@@ -7,6 +7,8 @@ from PIL import Image
 from PIL import ImageDraw
 from PIL import ImageFont
 
+import textwrap
+
 import subprocess
 import speech_recognition as sr
 
@@ -62,6 +64,8 @@ bottom = height-padding
 # Move left to right keeping track of the current x position for drawing shapes.
 x = 0
 
+wrapper = textwrap.TextWrapper(width=20)
+
 
 # Load default font.
 font = ImageFont.load_default()
@@ -75,7 +79,9 @@ def clear(draw):
 
 
 def print_oled(draw, disp, text, y=10):
-    draw.text((x, top+y), str(text), font=font, fill=255)
+    word_list = wrapper.wrap(text=text)
+    for i in range(len(word_list)):
+        draw.text((x, top+y+(i*8)), str(word_list[i]), font=font, fill=255)
     disp.image(image)
     disp.display()
     print(text)
@@ -96,7 +102,7 @@ while True:
         # instead of `r.recognize_google(audio)`
         clear(draw)
         print_oled(draw, disp, 'processing')
-        last_text = r.recognize_google(audio)
+        last_text = r.recognize_google(audio, language='ms-MY')
         print_oled(draw, disp, last_text, y=24)
     except sr.UnknownValueError:
         print_oled(draw, disp, "Google Speech Recognition could not understand audio", y=20)
