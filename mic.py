@@ -105,6 +105,12 @@ def save_message(db, message, lang='en-US', date=None, record=None):
     }
     db.collection(u'transcriptions').add(data)
 
+def update_status(db, status):
+    data = {
+        u'status': status
+    }
+    db.collection(u'variables').document(u'status').set(data)
+
 def on_change_language(doc_snapshot, changes, read_time):
     for doc in doc_snapshot:
         global language
@@ -121,22 +127,25 @@ while True:
     with sr.Microphone() as source:
         r.adjust_for_ambient_noise(source, duration=0.5)
         clear(draw)
+        update_status(db, 'Listening...')
         print_oled(draw, disp, "Say something!")
         print_oled(draw, disp, last_text, y=24)
-        audio = r.listen(source, timeout=5)
+        audio = r.listen(source)
     try:
         # for testing purposes, we're just using the default API key
         # to use another API key, use `r.recognize_google(audio, key="GOOGLE_SPEECH_RECOGNITION_API_KEY")`
         # instead of `r.recognize_google(audio)`
         clear(draw)
-        print_oled(draw, disp, 'processing')
+        print_oled(draw, disp, 'Processing...')
+        update_status(db, 'Processing...')
         last_text = r.recognize_google(audio, language=language)
         print_oled(draw, disp, last_text, y=24)
         save_message(db, last_text)
     except sr.UnknownValueError:
-        print_oled(draw, disp, "Google Speech Recognition could not understand audio", y=20)
+        update_status(db, 'Unrecognized, try again!')
+        print_oled(draw, disp, "Unrecognized, please say again!", y=20)
     except sr.RequestError as e:
-        print_oled(draw, disp, "Could not request results from Google Speech Recognition service; {0}".format(e), y=20)
+        print_oled(draw, disp, "Connection error; {0}".format(e), y=20)
 
     # draw.text((x, top),       "IP: " + str(IP),  font=font, fill=255)
 
